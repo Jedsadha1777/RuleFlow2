@@ -312,7 +312,8 @@ function dateUtcMs(p: DateParts | DateTimeParts): number {
   const h = typeof dt.hour === 'number' ? dt.hour : 0;
   const m = typeof dt.minute === 'number' ? dt.minute : 0;
   const s = typeof dt.second === 'number' ? dt.second : 0;
-  return Date.UTC(p.year, p.month - 1, p.day, h, m, s);
+  const tz = typeof dt.tzOffsetMin === 'number' ? dt.tzOffsetMin : 0;
+  return Date.UTC(p.year, p.month - 1, p.day, h, m, s) - tz * 60000;
 }
 
 function fromMs(ms: number): DateTimeParts {

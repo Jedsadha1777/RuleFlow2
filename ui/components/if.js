@@ -3,7 +3,7 @@ class IfBlock extends BaseBlock {
     super();
     this.data = {
       id: this.genId(),
-      outs: [{ name: 'result', type: 'str', fallback: '' }],
+      outs: [{ name: 'result', type: 'str', fallback: '', expose: true }],
       branches: [{ cond: '', set: {} }],
       elseSet: {},
     };
@@ -12,6 +12,10 @@ class IfBlock extends BaseBlock {
   kindLabel() { return 'If'; }
 
   outputNames() { return this.data.outs.map((o) => o.name).filter(Boolean); }
+  exposedOutputNames() { return this.data.outs.filter((o) => o.expose !== false && o.name).map((o) => o.name); }
+  applyExposeFromSet(set) {
+    for (const o of this.data.outs) o.expose = set.has(o.name);
+  }
 
   toJSON() {
     const outNames = this.data.outs.map((o) => o.name);
@@ -26,7 +30,7 @@ class IfBlock extends BaseBlock {
   fromJSON(json) {
     this.data = {
       id: json.id,
-      outs: (json.outs || []).map((o) => ({ name: o[0], type: o[1], fallback: o[2] })),
+      outs: (json.outs || []).map((o) => ({ name: o[0], type: o[1], fallback: o[2], expose: true })),
       branches: (json.branches || []).map(([cond, set]) => ({ cond, set: set || {} })),
       elseSet: (typeof json.else === 'object' && !Array.isArray(json.else)) ? json.else : {},
     };
@@ -36,7 +40,7 @@ class IfBlock extends BaseBlock {
     return `
       <div class="section-title">Outputs</div>
       <div data-outs-list="${idx}">
-        ${this.data.outs.map((o, i) => outDeclRow(idx, i, o.name, o.type, o.fallback)).join('')}
+        ${this.data.outs.map((o, i) => outDeclRow(idx, i, o.name, o.type, o.fallback, o.expose)).join('')}
       </div>
       <button class="btn btn-sm btn-outline-secondary mb-3" data-act="add-out" data-block-i="${idx}">
         <i class="bi bi-plus"></i> Add Output

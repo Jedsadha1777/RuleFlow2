@@ -35,7 +35,9 @@ export interface TimeParts {
   second: number;
 }
 
-export interface DateTimeParts extends DateParts, TimeParts {}
+export interface DateTimeParts extends DateParts, TimeParts {
+  tzOffsetMin?: number; // minutes east of UTC; undefined or 0 = UTC
+}
 
 export function parseDate(s: string): DateParts | null {
   if (s.length !== 10) return null;
@@ -71,21 +73,28 @@ export function parseDateTime(s: string): DateTimeParts | null {
   if (!date) return null;
   const time = parseTime(s.slice(11, 19));
   if (!time) return null;
-  if (s.length > 19 && !isValidTimezone(s.slice(19))) return null;
-  return { ...date, ...time };
+  let tzOffsetMin = 0;
+  if (s.length > 19) {
+    const off = parseTimezone(s.slice(19));
+    if (off === null) return null;
+    tzOffsetMin = off;
+  }
+  return { ...date, ...time, tzOffsetMin };
 }
 
-function isValidTimezone(tz: string): boolean {
-  if (tz === 'Z') return true;
-  if (tz.length !== 6) return false;
-  if (tz[0] !== '+' && tz[0] !== '-') return false;
-  if (tz[3] !== ':') return false;
+function parseTimezone(tz: string): number | null {
+  if (tz === 'Z') return 0;
+  if (tz.length !== 6) return null;
+  if (tz[0] !== '+' && tz[0] !== '-') return null;
+  if (tz[3] !== ':') return null;
   for (const i of [1, 2, 4, 5]) {
-    if (!isDigit(tz[i])) return false;
+    if (!isDigit(tz[i])) return null;
   }
   const h = Number(tz.slice(1, 3));
   const m = Number(tz.slice(4, 6));
-  return h <= 14 && m <= 59;
+  if (h > 14 || m > 59) return null;
+  const mins = h * 60 + m;
+  return tz[0] === '-' ? -mins : mins;
 }
 
 export function isValidDate(s: string): boolean {

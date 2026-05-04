@@ -74,7 +74,7 @@ $(document).ready(function () {
     const blocks = state.blocks.map((b) => b.toJSON());
     const outputs = [];
     for (const b of state.blocks) {
-      for (const n of b.outputNames()) outputs.push(n);
+      for (const n of b.exposedOutputNames()) outputs.push(n);
     }
     const uses = detectThemes(blocks);
     return {
@@ -152,7 +152,7 @@ $(document).ready(function () {
 
   function refreshOutputs() {
     const outs = [];
-    for (const b of state.blocks) for (const n of b.outputNames()) outs.push(n);
+    for (const b of state.blocks) for (const n of b.exposedOutputNames()) outs.push(n);
     $('#outputsList').html(outs.length === 0 ? 'No outputs' : outs.map((o) => `<code>${escapeHtml(o)}</code>`).join(', '));
   }
 
@@ -193,10 +193,11 @@ $(document).ready(function () {
           ${suggestions.map((s) => `<option value="${escapeAttr(s)}" ${val === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
         </select>
       `;
+    } else if (decl.type === 'date' || decl.type === 'time' || decl.type === 'datetime') {
+      inputHtml = renderDateTimeParts(decl.name, decl.type, valStr);
     } else {
-      const itype = decl.type === 'date' ? 'date' : decl.type === 'time' ? 'time' : decl.type === 'datetime' ? 'datetime-local' : 'text';
       inputHtml = `
-        <input type="${itype}" class="form-control form-control-sm"
+        <input type="text" class="form-control form-control-sm"
                data-input-name="${escapeAttr(decl.name)}" value="${escapeAttr(valStr)}" placeholder="${decl.type}">
       `;
     }
@@ -207,6 +208,31 @@ $(document).ready(function () {
         <div class="field-error" data-field-error="${escapeAttr(decl.name)}"></div>
       </div>
     `;
+  }
+
+  function dateInput(name, val) {
+    return `<input type="date" class="form-control form-control-sm" style="width:160px"
+      data-dt-input="${escapeAttr(name)}" data-dt-part="date" value="${escapeAttr(val)}">`;
+  }
+
+  function timeDropdown(name, part, val, max) {
+    let opts = '<option value="">--</option>';
+    for (let i = 0; i <= max; i++) {
+      const v = String(i).padStart(2, '0');
+      opts += `<option value="${v}" ${v === val ? 'selected' : ''}>${v}</option>`;
+    }
+    return `<select class="form-select form-select-sm" style="width:75px"
+      data-dt-input="${escapeAttr(name)}" data-dt-part="${part}">${opts}</select>`;
+  }
+
+  function renderDateTimeParts(name, type, val) {
+    const p = partsFromIso(type, val);
+    const time = `${timeDropdown(name, 'hour', p.hour, 23)}<span class="px-1">:</span>${timeDropdown(name, 'minute', p.minute, 59)}`;
+    if (type === 'date') return `<div class="d-flex gap-1 align-items-center">${dateInput(name, p.date)}</div>`;
+    if (type === 'time') return `<div class="d-flex gap-1 align-items-center">${time}</div>`;
+    const tz = browserTzOffset();
+    const tzLabel = tz === 'Z' ? 'UTC' : `local (${tz})`;
+    return `<div class="d-flex gap-1 align-items-center flex-wrap">${dateInput(name, p.date)}<span class="text-muted px-1">·</span>${time}<small class="text-muted ms-1" title="local time + browser timezone offset, sent to engine in ISO-8601">${tzLabel}</small></div>`;
   }
 
   function refreshValidation() {
@@ -628,6 +654,40 @@ $(document).ready(function () {
     runLivePreview();
   });
 
+  // ===== Toggle output expose (eye / eye-slash) =====
+  $(document).on('click', '[data-act="toggle-expose"]', function () {
+    const idx = parseInt($(this).attr('data-block-i'));
+    const outIdx = parseInt($(this).attr('data-out-i'));
+    const block = state.blocks[idx];
+    if (block instanceof FormulaBlock) {
+      block.data.expose_out = block.data.expose_out === false;
+    } else if (block.data.outs && block.data.outs[outIdx]) {
+      block.data.outs[outIdx].expose = block.data.outs[outIdx].expose === false;
+    }
+    refreshBlocks();
+    refreshOutputs();
+    refreshJson();
+    refreshValidation();
+    runLivePreview();
+  });
+
+  // ===== Date/Time/DateTime part-based inputs =====
+  $(document).on('input change', '[data-dt-input]', function () {
+    const $el = $(this);
+    const name = $el.attr('data-dt-input');
+    const decl = state.inputs.find((i) => i.name === name);
+    if (!decl) return;
+    const parts = { date: '', hour: '', minute: '', second: '' };
+    $(`[data-dt-input="${name}"]`).each(function () {
+      parts[$(this).attr('data-dt-part')] = $(this).val();
+    });
+    if (decl.type === 'datetime') parts.tz = browserTzOffset();
+    const built = isoFromParts(decl.type, parts);
+    if (built === '') delete state.formInputs[name];
+    else state.formInputs[name] = built;
+    runLivePreview();
+  });
+
   // ===== Expression autocomplete =====
   let popupEl = null;
   function hidePopup() { if (popupEl) { popupEl.remove(); popupEl = null; } }
@@ -805,6 +865,10 @@ $(document).ready(function () {
       inst.fromJSON(blk);
       return inst;
     });
+    if (Array.isArray(m.outputs)) {
+      const exposedSet = new Set(m.outputs);
+      for (const b of state.blocks) b.applyExposeFromSet(exposedSet);
+    }
     $('#modName').val(state.name);
   }
 

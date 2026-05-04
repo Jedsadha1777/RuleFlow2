@@ -4,7 +4,7 @@ class TableBlock extends BaseBlock {
     this.data = {
       id: this.genId(),
       table: ['$tier', '$qty'],
-      outs: [{ name: 'discount', type: 'num', fallback: 0 }],
+      outs: [{ name: 'discount', type: 'num', fallback: 0, expose: true }],
       rows: [{ cells: ['gold', '*'], set: {} }],
       defaultSet: {},
     };
@@ -13,6 +13,10 @@ class TableBlock extends BaseBlock {
   kindLabel() { return 'Table'; }
 
   outputNames() { return this.data.outs.map((o) => o.name).filter(Boolean); }
+  exposedOutputNames() { return this.data.outs.filter((o) => o.expose !== false && o.name).map((o) => o.name); }
+  applyExposeFromSet(set) {
+    for (const o of this.data.outs) o.expose = set.has(o.name);
+  }
 
   toJSON() {
     const outNames = this.data.outs.map((o) => o.name);
@@ -41,7 +45,7 @@ class TableBlock extends BaseBlock {
     this.data = {
       id: json.id,
       table: json.table || [],
-      outs: (json.outs || []).map((o) => ({ name: o[0], type: o[1], fallback: o[2] })),
+      outs: (json.outs || []).map((o) => ({ name: o[0], type: o[1], fallback: o[2], expose: true })),
       rows: (json.rows || []).map((row) => {
         const cells = row.slice(0, json.table.length).map((c) => String(c));
         const set = row[json.table.length] || {};
@@ -68,7 +72,7 @@ class TableBlock extends BaseBlock {
 
       <div class="section-title">Outputs</div>
       <div data-outs-list="${idx}">
-        ${this.data.outs.map((o, i) => outDeclRow(idx, i, o.name, o.type, o.fallback)).join('')}
+        ${this.data.outs.map((o, i) => outDeclRow(idx, i, o.name, o.type, o.fallback, o.expose)).join('')}
       </div>
       <button class="btn btn-sm btn-outline-secondary mb-3" data-act="add-out" data-block-i="${idx}">
         <i class="bi bi-plus"></i> Add Output

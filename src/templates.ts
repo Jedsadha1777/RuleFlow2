@@ -608,6 +608,143 @@ const PROPERTY_VALUATION: Template = {
   ],
 };
 
+const EMPLOYEE_LEAVE: Template = {
+  config: {
+    name: 'employee_leave_request',
+    ver: '1.0.0',
+    uses: ['date'],
+    inputs: [
+      { name: 'leave_start', type: 'date' },
+      { name: 'leave_end', type: 'date' },
+      { name: 'accrued_days', type: 'num', min: 0 },
+      { name: 'tier', type: 'str', enum: ['junior', 'senior', 'lead'] },
+    ],
+    outputs: ['total_days', 'business_days', 'within_balance', 'auto_approved', 'return_date'],
+    blocks: [
+      { id: 'count_total', out: ['total_days', 'num'], expr: 'days_between($leave_start, $leave_end) + 1' },
+      { id: 'count_business', out: ['business_days', 'num'], expr: 'business_days_between($leave_start, $leave_end) + 1' },
+      { id: 'check_balance', out: ['within_balance', 'bool'], expr: '$accrued_days >= $business_days' },
+      {
+        id: 'approval',
+        on: '$tier',
+        outs: [['auto_approved', 'bool', false]],
+        cases: [
+          ['lead', { auto_approved: '$within_balance' }],
+          ['senior', { auto_approved: '$within_balance AND $business_days <= 5' }],
+          ['junior', { auto_approved: '$within_balance AND $business_days <= 3' }],
+        ],
+        default: {},
+      },
+      { id: 'return', out: ['return_date', 'date'], expr: 'add_days($leave_end, 1)' },
+    ],
+  },
+  meta: {
+    name: 'employee_leave_request',
+    category: 'hr',
+    description: 'leave request: counts business days, checks balance, auto-approves by tier',
+    tags: ['leave', 'hr', 'date'],
+  },
+  examples: [
+    {
+      name: 'senior_within_balance',
+      inputs: { leave_start: '2026-06-01', leave_end: '2026-06-05', accrued_days: 10, tier: 'senior' },
+      expected: { total_days: 5, business_days: 5, within_balance: true, auto_approved: true, return_date: '2026-06-06' },
+    },
+    {
+      name: 'junior_too_long',
+      inputs: { leave_start: '2026-06-01', leave_end: '2026-06-05', accrued_days: 10, tier: 'junior' },
+      expected: { total_days: 5, business_days: 5, within_balance: true, auto_approved: false, return_date: '2026-06-06' },
+    },
+    {
+      name: 'over_balance',
+      inputs: { leave_start: '2026-12-21', leave_end: '2026-12-25', accrued_days: 2, tier: 'senior' },
+      expected: { total_days: 5, business_days: 5, within_balance: false, auto_approved: false, return_date: '2026-12-26' },
+    },
+  ],
+};
+
+const SUPPORT_SLA: Template = {
+  config: {
+    name: 'support_ticket_sla',
+    ver: '1.0.0',
+    uses: ['date'],
+    inputs: [
+      { name: 'submitted_at', type: 'datetime' },
+      { name: 'priority', type: 'str', enum: ['critical', 'high', 'normal', 'low'] },
+    ],
+    outputs: ['sla_hours', 'due_at', 'in_business_hours', 'response_channel'],
+    blocks: [
+      {
+        id: 'pick_sla',
+        on: '$priority',
+        outs: [['sla_hours', 'num', 72]],
+        cases: [
+          ['critical', { sla_hours: 1 }],
+          ['high', { sla_hours: 4 }],
+          ['normal', { sla_hours: 24 }],
+          ['low', { sla_hours: 72 }],
+        ],
+        default: {},
+      },
+      { id: 'compute_due', out: ['due_at', 'datetime'], expr: 'add_hours($submitted_at, $sla_hours)' },
+      { id: 'extract_time', out: ['submit_time', 'time'], expr: 'time_of($submitted_at)' },
+      {
+        id: 'check_hours',
+        out: ['in_business_hours', 'bool'],
+        expr: 'is_business_hours($submit_time, "09:00:00", "17:00:00")',
+      },
+      {
+        id: 'route',
+        outs: [['response_channel', 'str', 'email_queue']],
+        branches: [
+          ['$priority == "critical"', { response_channel: 'pager' }],
+          ['$in_business_hours AND $priority == "high"', { response_channel: 'live_chat' }],
+          ['$in_business_hours', { response_channel: 'agent_inbox' }],
+        ],
+        else: {},
+      },
+    ],
+  },
+  meta: {
+    name: 'support_ticket_sla',
+    category: 'support',
+    description: 'support SLA: due time + business-hours routing by priority',
+    tags: ['sla', 'support', 'datetime', 'time'],
+  },
+  examples: [
+    {
+      name: 'high_in_hours',
+      inputs: { submitted_at: '2026-05-04T10:30:00Z', priority: 'high' },
+      expected: {
+        sla_hours: 4,
+        due_at: '2026-05-04T14:30:00Z',
+        in_business_hours: true,
+        response_channel: 'live_chat',
+      },
+    },
+    {
+      name: 'critical_after_hours',
+      inputs: { submitted_at: '2026-05-04T22:15:00Z', priority: 'critical' },
+      expected: {
+        sla_hours: 1,
+        due_at: '2026-05-04T23:15:00Z',
+        in_business_hours: false,
+        response_channel: 'pager',
+      },
+    },
+    {
+      name: 'low_after_hours',
+      inputs: { submitted_at: '2026-05-04T20:00:00Z', priority: 'low' },
+      expected: {
+        sla_hours: 72,
+        due_at: '2026-05-07T20:00:00Z',
+        in_business_hours: false,
+        response_channel: 'email_queue',
+      },
+    },
+  ],
+};
+
 const BUILTIN: Record<string, Template> = {
   loan_approval: LOAN_APPROVAL,
   credit_card_approval: CREDIT_CARD_APPROVAL,
@@ -617,6 +754,8 @@ const BUILTIN: Record<string, Template> = {
   auto_insurance_premium: INSURANCE_PREMIUM,
   student_grading: STUDENT_GRADING,
   property_valuation: PROPERTY_VALUATION,
+  employee_leave_request: EMPLOYEE_LEAVE,
+  support_ticket_sla: SUPPORT_SLA,
 };
 
 export class TemplateRegistry {

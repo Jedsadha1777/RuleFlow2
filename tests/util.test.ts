@@ -97,6 +97,7 @@ describe('iso datetime', () => {
       hour: 14,
       minute: 30,
       second: 45,
+      tzOffsetMin: 0,
     });
   });
 

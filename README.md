@@ -227,7 +227,7 @@ rf.exportTemplate('bmi_assessment');    // → JSON
 rf.importTemplate(json);                // load custom
 ```
 
-Built-in templates: `loan_approval`, `credit_card_approval`, `bmi_assessment`, `tier_pricing`, `performance_review`, `auto_insurance_premium`, `student_grading`, `property_valuation`.
+Built-in templates: `loan_approval`, `credit_card_approval`, `bmi_assessment`, `tier_pricing`, `performance_review`, `auto_insurance_premium`, `student_grading`, `property_valuation`, `employee_leave_request` (date), `support_ticket_sla` (datetime + time).
 
 ## Expression syntax
 

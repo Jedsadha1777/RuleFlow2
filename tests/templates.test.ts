@@ -11,10 +11,12 @@ describe('built-in templates', () => {
       'auto_insurance_premium',
       'bmi_assessment',
       'credit_card_approval',
+      'employee_leave_request',
       'loan_approval',
       'performance_review',
       'property_valuation',
       'student_grading',
+      'support_ticket_sla',
       'tier_pricing',
     ]);
   });
@@ -35,7 +37,7 @@ describe('built-in templates', () => {
 
   it('categories', () => {
     const cats = rf.templateCategories().sort();
-    expect(cats).toEqual(['ecommerce', 'education', 'financial', 'healthcare', 'hr', 'insurance', 'real_estate']);
+    expect(cats).toEqual(['ecommerce', 'education', 'financial', 'healthcare', 'hr', 'insurance', 'real_estate', 'support']);
   });
 
   it('export + import roundtrip', () => {

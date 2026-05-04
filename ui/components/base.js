@@ -16,6 +16,8 @@ class BaseBlock {
   setId(id) { this.data.id = id; }
 
   outputNames() { return []; }
+  exposedOutputNames() { return this.outputNames(); }
+  applyExposeFromSet(_set) {}
 
   toJSON() { return { ...this.data }; }
   fromJSON(json) { this.data = { ...json }; }
@@ -110,7 +112,16 @@ function exprField(label, blockIdx, field, value, placeholder) {
   `;
 }
 
-function outDeclRow(blockIdx, outIdx, name, type, fallback) {
+function exposeToggle(blockIdx, outIdx, expose) {
+  const exp = expose !== false;
+  return `<button class="btn btn-sm btn-outline-${exp ? 'primary' : 'secondary'}"
+    data-act="toggle-expose" data-block-i="${blockIdx}" data-out-i="${outIdx}"
+    title="${exp ? 'Exposed in module output — click to mark internal' : 'Internal (used by other blocks only) — click to expose'}">
+    <i class="bi bi-${exp ? 'eye' : 'eye-slash'}"></i>
+  </button>`;
+}
+
+function outDeclRow(blockIdx, outIdx, name, type, fallback, expose) {
   return `
     <div class="row-item" data-out-row="${outIdx}">
       <input type="text" class="form-control form-control-sm" style="flex:2"
@@ -123,6 +134,7 @@ function outDeclRow(blockIdx, outIdx, name, type, fallback) {
       <input type="text" class="form-control form-control-sm" style="flex:2"
              data-out-field="fallback" data-block-i="${blockIdx}" data-out-i="${outIdx}"
              value="${escapeAttr(fallback === undefined ? '' : String(fallback))}" placeholder="fallback">
+      ${exposeToggle(blockIdx, outIdx, expose)}
       <button class="btn btn-sm btn-outline-danger" data-act="remove-out" data-block-i="${blockIdx}" data-out-i="${outIdx}"><i class="bi bi-x"></i></button>
     </div>
   `;
