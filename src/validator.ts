@@ -47,6 +47,19 @@ export function validateModule(module: Module, reg: FunctionRegistry): Validatio
     inputNames.add(inp.name);
   }
 
+  // Top-level output names must be unique (nested sub-blocks reuse parent's outputs intentionally)
+  const topLevelOutputOwner = new Map<string, string>();
+  for (const b of module.blocks) {
+    for (const o of outputsOf(b)) {
+      const prev = topLevelOutputOwner.get(o);
+      if (prev) {
+        errors.push(makeErr('S3_OUTPUT_DUPLICATE', `output '${o}' declared in both '${prev}' and '${b.id}' (later shadows earlier)`, { block: b.id }));
+      } else {
+        topLevelOutputOwner.set(o, b.id);
+      }
+    }
+  }
+
   const allOutputs = new Set<string>();
   for (const b of allBlocks) for (const o of outputsOf(b)) allOutputs.add(o);
 
@@ -66,7 +79,7 @@ export function validateModule(module: Module, reg: FunctionRegistry): Validatio
   try {
     detectCycle(module);
   } catch (e) {
-    if (e instanceof ConfigError) errors.push({ code: e.code, message: e.message, loc: e.loc });
+    if (e instanceof ConfigError) errors.push({ code: e.code, message: e.rawMessage, loc: e.loc });
   }
 
   validateExpressions(allBlocks, reg, errors);
@@ -217,12 +230,16 @@ function detectCycle(module: Module): void {
 
 function validateExpressions(blocks: Block[], reg: FunctionRegistry, errors: ConfigErrorObj[]): void {
   const checkExpr = (s: string, blockId: string) => {
+    if (s.trim() === '') {
+      errors.push(makeErr('S5_EXPR_EMPTY', 'expression is empty', { block: blockId }));
+      return;
+    }
     let ast: AstNode;
     try {
       ast = parseExpr(s);
     } catch (e) {
       if (e instanceof ConfigError) {
-        errors.push({ code: e.code, message: e.message, loc: { block: blockId } });
+        errors.push({ code: e.code, message: e.rawMessage, loc: { block: blockId } });
       }
       return;
     }
@@ -242,16 +259,26 @@ function validateExpressions(blocks: Block[], reg: FunctionRegistry, errors: Con
 function validateBlockSpecifics(blocks: Block[], errors: ConfigErrorObj[]): void {
   for (const b of blocks) {
     if ('branches' in b) {
-      for (const [name, , fb] of b.outs) {
+      for (const [name, type, fb] of b.outs) {
         if (fb === undefined) errors.push(makeErr('S6_MISSING_FALLBACK', `output '${name}' missing fallback`, { block: b.id }));
+        else checkValueAgainstType(fb, type, name, b.id, 'fallback', errors);
       }
       if (b.else === undefined) errors.push(makeErr('S6_MISSING_ELSE', `block '${b.id}' missing else`, { block: b.id }));
+      else checkPayloadTypes(b.else, b.outs, b.id, 'else', errors);
+      for (let i = 0; i < b.branches.length; i++) {
+        checkPayloadTypes(b.branches[i][1], b.outs, b.id, `branch[${i}]`, errors);
+      }
     }
     if ('cases' in b) {
-      for (const [name, , fb] of b.outs) {
+      for (const [name, type, fb] of b.outs) {
         if (fb === undefined) errors.push(makeErr('S6_MISSING_FALLBACK', `output '${name}' missing fallback`, { block: b.id }));
+        else checkValueAgainstType(fb, type, name, b.id, 'fallback', errors);
       }
       if (b.default === undefined) errors.push(makeErr('S6_MISSING_DEFAULT', `block '${b.id}' missing default`, { block: b.id }));
+      else checkPayloadTypes(b.default, b.outs, b.id, 'default', errors);
+      for (let i = 0; i < b.cases.length; i++) {
+        checkPayloadTypes(b.cases[i][1], b.outs, b.id, `case[${i}]`, errors);
+      }
       const seen = new Set<unknown>();
       for (const [v] of b.cases) {
         if (seen.has(v)) errors.push(makeErr('S2_DUPLICATE_ID', `case value duplicated in '${b.id}'`, { block: b.id }));
@@ -278,12 +305,85 @@ function validateBlockSpecifics(blocks: Block[], errors: ConfigErrorObj[]): void
         if (rowKeys.has(key)) errors.push(makeErr('S6_TABLE_DUPLICATE_ROW', `row ${i} duplicates pattern in '${b.id}'`, { block: b.id }));
         rowKeys.add(key);
       }
-      for (const [name, , fb] of b.outs) {
+      for (const [name, type, fb] of b.outs) {
         if (fb === undefined) errors.push(makeErr('S6_MISSING_FALLBACK', `output '${name}' missing fallback`, { block: b.id }));
+        else checkValueAgainstType(fb, type, name, b.id, 'fallback', errors);
       }
       if (b.default === undefined) errors.push(makeErr('S6_MISSING_DEFAULT', `table '${b.id}' missing default`, { block: b.id }));
+      else checkPayloadTypes(b.default, b.outs, b.id, 'default', errors);
+      for (let i = 0; i < b.rows.length; i++) {
+        const row = b.rows[i];
+        if (row.length === b.table.length + 1) {
+          const payload = row[row.length - 1];
+          if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+            checkPayloadTypes(payload as Payload, b.outs, b.id, `row[${i}]`, errors);
+          }
+        }
+      }
     }
   }
+}
+
+function checkPayloadTypes(
+  payload: Payload,
+  outs: [string, import('./types.js').PrimType, unknown][],
+  blockId: string,
+  ctx: string,
+  errors: ConfigErrorObj[],
+): void {
+  if (Array.isArray(payload)) return; // nested blocks — typed inside their own block
+  const typeOf = new Map(outs.map(([n, t]) => [n, t] as const));
+  for (const [outName, raw] of Object.entries(payload)) {
+    const t = typeOf.get(outName);
+    if (!t) continue; // S6_UNKNOWN_OUTPUT raised elsewhere
+    checkValueAgainstType(raw, t, outName, blockId, ctx, errors);
+  }
+}
+
+function checkValueAgainstType(
+  raw: unknown,
+  type: import('./types.js').PrimType,
+  outName: string,
+  blockId: string,
+  ctx: string,
+  errors: ConfigErrorObj[],
+): void {
+  if (raw === null || raw === undefined) return;
+  if (typeof raw === 'boolean' || typeof raw === 'number') return;
+  if (typeof raw !== 'string') return;
+
+  if (type === 'str') return;
+  if (raw === '') return;
+
+  if (type === 'num' || type === 'dec') {
+    let ast: AstNode;
+    try {
+      ast = parseExpr(raw);
+    } catch {
+      errors.push(makeErr('S5_VALUE_TYPE', `output '${outName}' is ${type} but ${ctx} value '${raw}' is not a number or expression`, { block: blockId, field: ctx }));
+      return;
+    }
+    if (ast.k === 'lit' && typeof ast.value === 'string') {
+      errors.push(makeErr('S5_VALUE_TYPE', `output '${outName}' is ${type} but ${ctx} value is the string '${ast.value}'`, { block: blockId, field: ctx }));
+    }
+    return;
+  }
+
+  if (type === 'bool') {
+    if (raw === 'true' || raw === 'false') return;
+    let ast: AstNode;
+    try {
+      ast = parseExpr(raw);
+    } catch {
+      errors.push(makeErr('S5_VALUE_TYPE', `output '${outName}' is bool but ${ctx} value '${raw}' is not boolean or expression`, { block: blockId, field: ctx }));
+      return;
+    }
+    if (ast.k === 'lit' && typeof ast.value !== 'boolean') {
+      errors.push(makeErr('S5_VALUE_TYPE', `output '${outName}' is bool but ${ctx} value is ${typeof ast.value} '${String(ast.value)}'`, { block: blockId, field: ctx }));
+    }
+    return;
+  }
+  // date/time/datetime accept raw strings — runtime validates format
 }
 
 function collectLintWarnings(blocks: Block[], warnings: WarningObj[]): void {
@@ -627,7 +727,7 @@ export function validateBlock(block: Block, scope: { vars: string[]; functions: 
     try {
       ast = parseExpr(expr);
     } catch (e) {
-      if (e instanceof ConfigError) errors.push({ code: e.code, message: e.message, loc: { block: block.id, field } });
+      if (e instanceof ConfigError) errors.push({ code: e.code, message: e.rawMessage, loc: { block: block.id, field } });
       return;
     }
     for (const v of collectVarRefs(ast)) {

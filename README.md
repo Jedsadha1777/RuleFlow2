@@ -38,6 +38,8 @@ const result = rf.evaluate(config, { price: '100', qty: 3, tax_rate: 7 });
 
 ## Block types
 
+`id` = engine label (debug/error/trace). Variable references use **output name** (in `out` / `outs[]`), not `id`. Output names must be unique across blocks (`S3_OUTPUT_DUPLICATE` error if duplicated).
+
 ```ts
 // Formula — single output, expression
 { id: 'b', out: ['name', 'num'], expr: '$x * 2' }
@@ -275,6 +277,8 @@ Visual editor (jQuery + Bootstrap) under `ui/`:
 - Bottom tabs: Errors / Debug / Code / Schema / Docs
 - Templates browser
 - Import / Export JSON
+- Block IDs + module version auto-generated (user manages only output names + expressions)
+- Themes auto-detected from expression function calls
 
 ## Scripts
 

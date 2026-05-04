@@ -488,7 +488,7 @@ export function tryParseExpr(text: string): ParseResult {
     return { ast: parseExpr(text) };
   } catch (e) {
     if (e instanceof ConfigError) {
-      return { error: { code: e.code, message: e.message, pos: extractColFromMessage(e.message) } };
+      return { error: { code: e.code, message: e.rawMessage, pos: extractColFromMessage(e.rawMessage) } };
     }
     if (e instanceof TokenizeError) {
       return { error: { code: 'TOKENIZE', message: e.message, pos: e.pos } };

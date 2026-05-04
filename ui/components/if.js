@@ -34,14 +34,6 @@ class IfBlock extends BaseBlock {
 
   renderBody(idx) {
     return `
-      <div class="row g-2 mb-2">
-        <div class="col-12">
-          <label class="form-label small mb-1">Block ID</label>
-          <input type="text" class="form-control form-control-sm"
-                 data-field="id" data-block-i="${idx}" value="${escapeAttr(this.data.id)}">
-        </div>
-      </div>
-
       <div class="section-title">Outputs</div>
       <div data-outs-list="${idx}">
         ${this.data.outs.map((o, i) => outDeclRow(idx, i, o.name, o.type, o.fallback)).join('')}

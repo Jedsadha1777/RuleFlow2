@@ -215,22 +215,6 @@ $(document).ready(function () {
     try { result = rf.validate(m); } catch (e) { result = { valid: false, errors: [{ code: 'INTERNAL', message: e.message }], warnings: [] }; }
     const errs = result.errors || [];
     const warns = result.warnings || [];
-
-    // Cross-block duplicate output name check (engine doesn't enforce, but UI warns)
-    const seen = new Map();
-    for (const b of state.blocks) {
-      for (const n of b.outputNames()) {
-        if (seen.has(n)) {
-          errs.push({
-            code: 'UI_DUPLICATE_OUTPUT',
-            message: `output '${n}' declared in both '${seen.get(n)}' and '${b.getId()}' (later shadows earlier)`,
-            loc: { block: b.getId() },
-          });
-        } else {
-          seen.set(n, b.getId());
-        }
-      }
-    }
     if (errs.length === 0 && warns.length === 0) {
       $('#errorsPanel').html('<div class="text-success small">No errors</div>');
     } else {
@@ -402,24 +386,18 @@ $(document).ready(function () {
     if (field === 'name') {
       refreshOutputs();
       refreshForm();
-      // update set-map badge labels in-place without re-rendering inputs (preserves focus)
-      $(`.block-card[data-block-index="${idx}"] [data-set-field]`).each(function () {
-        const $f = $(this);
-        const out = $f.attr('data-out');
-        if (out === undefined) return;
-        // nothing to do for the label; outputs may have new name only after blur refresh
-      });
     }
     refreshJson();
     refreshValidation();
+    runLivePreview();
   });
 
   $(document).on('change', '[data-out-field]', function () {
     const $el = $(this);
     const field = $el.attr('data-out-field');
     if (field === 'name' || field === 'type') {
-      // full re-render on blur to update labels + select map keys
-      refreshBlocks();
+      // full re-render on blur to update labels + select map keys + recompute preview
+      refreshAll();
     }
   });
 
@@ -622,7 +600,7 @@ $(document).ready(function () {
     else if (field === 'enum') state.inputs[idx].enum = $el.val().split(',').map((s) => s.trim()).filter(Boolean);
     else state.inputs[idx][field] = $el.val();
     if (field === 'name' || field === 'type') refreshForm();
-    refreshJson(); refreshValidation();
+    refreshJson(); refreshValidation(); runLivePreview();
   });
   $(document).on('click', '[data-act="remove-input"]', function () {
     const idx = parseInt($(this).attr('data-input-i'));

@@ -24,17 +24,12 @@ class FormulaBlock extends BaseBlock {
   renderBody(idx) {
     return `
       <div class="row g-2 mb-2">
-        <div class="col-5">
-          <label class="form-label small mb-1">Block ID</label>
-          <input type="text" class="form-control form-control-sm"
-                 data-field="id" data-block-i="${idx}" value="${escapeAttr(this.data.id)}">
-        </div>
-        <div class="col-5">
+        <div class="col-9">
           <label class="form-label small mb-1">Output name</label>
           <input type="text" class="form-control form-control-sm"
                  data-field="out_name" data-block-i="${idx}" value="${escapeAttr(this.data.out_name)}">
         </div>
-        <div class="col-2">
+        <div class="col-3">
           <label class="form-label small mb-1">Type</label>
           <select class="form-select form-select-sm" data-field="out_type" data-block-i="${idx}">
             ${typeOptions(this.data.out_type)}

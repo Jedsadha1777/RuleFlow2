@@ -42,6 +42,21 @@ describe('save-time validation', () => {
     expect(rf.validate(m).errors.some((e) => e.code === 'S3_UNDEFINED_VAR')).toBe(true);
   });
 
+  it('S3 output duplicate (cross-block)', () => {
+    const m: Module = {
+      name: 'm',
+      ver: '1.0.0',
+      inputs: [{ name: 'x', type: 'num' }],
+      outputs: ['y'],
+      blocks: [
+        { id: 'b1', out: ['y', 'num'], expr: '$x' },
+        { id: 'b2', out: ['y', 'num'], expr: '$x + 1' },
+      ],
+    };
+    const r = rf.validate(m);
+    expect(r.errors.some((e) => e.code === 'S3_OUTPUT_DUPLICATE')).toBe(true);
+  });
+
   it('S3 shadowing', () => {
     const m: Module = {
       name: 'm',

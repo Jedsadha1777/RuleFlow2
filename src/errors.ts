@@ -6,6 +6,7 @@ export interface ErrLoc {
 
 export class ConfigError extends Error {
   code: string;
+  rawMessage: string;
   loc?: ErrLoc;
   expected?: unknown;
   got?: unknown;
@@ -14,6 +15,7 @@ export class ConfigError extends Error {
     super(`${code}: ${message}`);
     this.name = 'ConfigError';
     this.code = code;
+    this.rawMessage = message;
     this.loc = opts?.loc;
     this.expected = opts?.expected;
     this.got = opts?.got;

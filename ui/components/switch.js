@@ -47,18 +47,11 @@ class SwitchBlock extends BaseBlock {
 
   renderBody(idx) {
     return `
-      <div class="row g-2 mb-2">
-        <div class="col-6">
-          <label class="form-label small mb-1">Block ID</label>
-          <input type="text" class="form-control form-control-sm"
-                 data-field="id" data-block-i="${idx}" value="${escapeAttr(this.data.id)}">
-        </div>
-        <div class="col-6">
-          <label class="form-label small mb-1">Switch on ($var)</label>
-          <input type="text" class="form-control form-control-sm"
-                 data-field="on" data-block-i="${idx}" value="${escapeAttr(this.data.on)}"
-                 placeholder="$tier">
-        </div>
+      <div class="mb-2">
+        <label class="form-label small mb-1">Switch on ($var)</label>
+        <input type="text" class="form-control form-control-sm"
+               data-field="on" data-block-i="${idx}" value="${escapeAttr(this.data.on)}"
+               placeholder="$tier">
       </div>
 
       <div class="section-title">Outputs</div>
