@@ -1,7 +1,9 @@
 node_modules/
 dist/
+dist-ui/
 build/
 coverage/
+ui/dist/
 *.log
 .DS_Store
 .vscode/

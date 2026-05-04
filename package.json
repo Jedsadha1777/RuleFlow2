@@ -7,13 +7,17 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ui:bundle": "esbuild src/index.ts --bundle --format=iife --global-name=RuleFlow2 --outfile=ui/dist/ruleflow2.js",
+    "ui:watch": "esbuild src/index.ts --bundle --format=iife --global-name=RuleFlow2 --outfile=ui/dist/ruleflow2.js --watch",
+    "ui:serve": "python3 -m http.server 5173 --directory ui"
   },
   "dependencies": {
     "decimal.js-light": "^2.5.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "esbuild": "^0.21.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
   }

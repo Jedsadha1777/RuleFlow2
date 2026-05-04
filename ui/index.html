@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RuleFlow2 Playground</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar navbar-dark bg-dark px-3">
+    <span class="navbar-brand mb-0 h1"><i class="bi bi-diagram-3"></i> RuleFlow2 Playground</span>
+    <div class="d-flex gap-2 align-items-center">
+      <select id="templateSelect" class="form-select form-select-sm" style="width:auto;">
+        <option value="">— Load template —</option>
+      </select>
+      <button id="newBtn" class="btn btn-sm btn-outline-light"><i class="bi bi-file-earmark-plus"></i> New</button>
+      <button id="exportBtn" class="btn btn-sm btn-outline-light"><i class="bi bi-download"></i> Export</button>
+      <label class="btn btn-sm btn-outline-light mb-0"><i class="bi bi-upload"></i> Import
+        <input type="file" id="importFile" accept=".json" hidden>
+      </label>
+    </div>
+  </nav>
+
+  <div class="three-pane">
+    <section class="pane pane-editor">
+      <div class="pane-header">
+        <h6 class="mb-0">Editor</h6>
+      </div>
+      <div class="pane-body">
+        <div class="module-meta mb-3">
+          <label class="form-label small mb-1">Module name</label>
+          <input id="modName" class="form-control form-control-sm" value="my_module">
+          <div class="mt-2">
+            <label class="form-label small mb-1">Themes (auto-detected)</label>
+            <div id="themeChecks" class="d-flex gap-2 flex-wrap small"></div>
+          </div>
+        </div>
+
+        <div class="section-title">Inputs</div>
+        <div id="inputsList" class="mb-2"></div>
+        <button id="addInputBtn" class="btn btn-sm btn-outline-secondary mb-3">
+          <i class="bi bi-plus"></i> Add Input
+        </button>
+
+        <div class="section-title">Outputs (auto-derived)</div>
+        <div id="outputsList" class="mb-3 small text-muted">Add blocks to see outputs</div>
+
+        <div class="section-title-row">
+          <div class="section-title mb-0">Blocks</div>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+              <i class="bi bi-plus"></i> Add Block
+            </button>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#" data-add="formula"><i class="bi bi-calculator"></i> Formula</a></li>
+              <li><a class="dropdown-item" href="#" data-add="if"><i class="bi bi-diagram-2"></i> If / Elif / Else</a></li>
+              <li><a class="dropdown-item" href="#" data-add="switch"><i class="bi bi-shuffle"></i> Switch</a></li>
+              <li><a class="dropdown-item" href="#" data-add="table"><i class="bi bi-table"></i> Table (multi-dim)</a></li>
+            </ul>
+          </div>
+        </div>
+        <div id="blocksList"></div>
+        <div id="blocksEmpty" class="empty-state">
+          <i class="bi bi-plus-circle fs-1"></i>
+          <div>No blocks. Click "Add Block".</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="resizer" data-resize="editor"></div>
+
+    <section class="pane pane-json">
+      <div class="pane-header">
+        <h6 class="mb-0">JSON</h6>
+        <button id="copyJsonBtn" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-clipboard"></i> Copy
+        </button>
+      </div>
+      <div class="pane-body p-0">
+        <pre id="jsonOutput" class="json-view m-0">{}</pre>
+      </div>
+    </section>
+
+    <div class="resizer" data-resize="json"></div>
+
+    <section class="pane pane-form">
+      <div class="pane-header">
+        <h6 class="mb-0">Run</h6>
+        <span id="formStatus" class="badge bg-secondary">0%</span>
+      </div>
+      <div class="pane-body">
+        <div class="section-title">Form (live preview)</div>
+        <form id="runForm" class="mb-3">
+          <div class="text-muted small">Add inputs to see form</div>
+        </form>
+
+        <div class="section-title">Output</div>
+        <pre id="runOutput" class="output-view">—</pre>
+      </div>
+    </section>
+  </div>
+
+  <section class="bottom-tabs">
+    <ul class="nav nav-tabs px-3 pt-2" role="tablist">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabErrors">
+        <i class="bi bi-exclamation-triangle"></i> Errors
+        <span id="errorCount" class="badge bg-danger ms-1" style="display:none">0</span>
+      </button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDebug">
+        <i class="bi bi-bug"></i> Debug
+      </button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabCodegen">
+        <i class="bi bi-code-slash"></i> Code
+      </button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSchema">
+        <i class="bi bi-file-earmark-code"></i> Schema
+      </button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabDocs">
+        <i class="bi bi-book"></i> Docs
+      </button></li>
+    </ul>
+    <div class="tab-content p-3">
+      <div class="tab-pane fade show active" id="tabErrors">
+        <div id="errorsPanel" class="text-muted small">No errors</div>
+      </div>
+      <div class="tab-pane fade" id="tabDebug">
+        <button id="runDebugBtn" class="btn btn-sm btn-primary mb-2">Run Debug</button>
+        <pre id="debugPanel" class="output-view">Fill form and click Run Debug</pre>
+      </div>
+      <div class="tab-pane fade" id="tabCodegen">
+        <pre id="codegenPanel" class="output-view">—</pre>
+      </div>
+      <div class="tab-pane fade" id="tabSchema">
+        <select id="schemaFormat" class="form-select form-select-sm mb-2" style="width:auto">
+          <option value="json-schema">JSON Schema</option>
+          <option value="openapi">OpenAPI</option>
+          <option value="typescript">TypeScript</option>
+          <option value="html-form">HTML Form</option>
+          <option value="react">React</option>
+          <option value="joi">Joi</option>
+          <option value="yup">Yup</option>
+          <option value="laravel">Laravel</option>
+        </select>
+        <pre id="schemaPanel" class="output-view">—</pre>
+      </div>
+      <div class="tab-pane fade" id="tabDocs">
+        <pre id="docsPanel" class="output-view">—</pre>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="dist/ruleflow2.js"></script>
+  <script src="components/base.js"></script>
+  <script src="components/formula.js"></script>
+  <script src="components/if.js"></script>
+  <script src="components/switch.js"></script>
+  <script src="components/table.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

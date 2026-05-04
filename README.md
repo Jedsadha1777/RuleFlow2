@@ -242,10 +242,47 @@ true false null   literals
 
 Forbidden inside expressions: `IF()`, `SWITCH()`, ternary `?:` — use Block-level branching.
 
+## Browser bundle
+
+```bash
+npm run ui:bundle     # build IIFE bundle → ui/dist/ruleflow2.js
+npm run ui:watch      # rebuild on src/ change
+```
+
+```html
+<script src="ruleflow2.js"></script>
+<script>
+  const rf = new RuleFlow2.RuleFlow();
+  const result = rf.evaluate(config, inputs);
+</script>
+```
+
+Bundle exposes everything from `src/index.ts` under `window.RuleFlow2` namespace (~170KB, includes decimal.js-light).
+
+## Playground UI
+
+```bash
+npm run ui:bundle     # build engine bundle (one time)
+npm run ui:serve      # serve at http://localhost:5173
+```
+
+Visual editor (jQuery + Bootstrap) under `ui/`:
+- Add Formula / If / Switch / Table blocks
+- Live JSON preview
+- Form auto-generated from inputs (live preview output)
+- Expression autocomplete (vars + functions)
+- Inline parse + scope error
+- Bottom tabs: Errors / Debug / Code / Schema / Docs
+- Templates browser
+- Import / Export JSON
+
 ## Scripts
 
 ```bash
-npm test            # run all tests
-npm run test:watch  # watch mode
-npm run typecheck   # tsc --noEmit
+npm test              # run all tests
+npm run test:watch    # watch mode
+npm run typecheck     # tsc --noEmit
+npm run ui:bundle     # build engine for browser
+npm run ui:watch      # rebuild on change
+npm run ui:serve      # serve playground
 ```
