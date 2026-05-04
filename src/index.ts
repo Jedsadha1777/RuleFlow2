@@ -1,6 +1,14 @@
 export { RuleFlow } from './engine.js';
 export { ConfigError, InputError, RunError, Warning } from './errors.js';
-export { parseExpr, parseCellPattern, walkAst, collectVarRefs, collectFuncCalls } from './parser.js';
+export {
+  parseExpr,
+  parseCellPattern,
+  walkAst,
+  collectVarRefs,
+  collectFuncCalls,
+  tryParseExpr,
+  completionAt,
+} from './parser.js';
 export {
   validateModule,
   checkCoverage,
@@ -10,11 +18,14 @@ export {
   livePreview,
   fieldSuggestions,
   batchValidateFields,
+  validateBlock,
 } from './validator.js';
 export { generateSchema, generateDocs, generateCode } from './generators.js';
+export { previewExpr, scopeAt } from './evaluator.js';
 export type { SchemaFormat, CodeGenOpts } from './generators.js';
-export type { DebugResult, DebugTrace } from './evaluator.js';
-export type { FieldResult, PartialResult, FormStatus, PreviewResult } from './validator.js';
+export type { DebugResult, DebugTrace, BlockScope, ExprPreview } from './evaluator.js';
+export type { FieldResult, PartialResult, FormStatus, PreviewResult, BlockValidation } from './validator.js';
+export type { ParseResult, ParseError, Completion, CompletionKind } from './parser.js';
 export type {
   AstNode,
   Block,

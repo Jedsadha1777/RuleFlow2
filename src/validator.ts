@@ -600,6 +600,107 @@ export function batchValidateFields(updates: Record<string, unknown>, current: I
   return out;
 }
 
+export interface BlockValidation {
+  valid: boolean;
+  errors: ConfigErrorObj[];
+  warnings: WarningObj[];
+}
+
+export function validateBlock(block: Block, scope: { vars: string[]; functions: string[] }): BlockValidation {
+  const errors: ConfigErrorObj[] = [];
+  const warnings: WarningObj[] = [];
+
+  const kindCount = ['expr' in block, 'branches' in block, 'cases' in block, 'table' in block].filter(Boolean).length;
+  if (kindCount === 0) {
+    errors.push({ code: 'S1_BLOCK_KIND_MISSING', message: `block '${block.id}' has no kind`, loc: { block: block.id } });
+    return { valid: false, errors, warnings };
+  }
+  if (kindCount > 1) {
+    errors.push({ code: 'S1_BLOCK_KIND_AMBIGUOUS', message: `block '${block.id}' has multiple kinds`, loc: { block: block.id } });
+  }
+
+  const knownVars = new Set(scope.vars);
+  const knownFns = new Set(scope.functions);
+
+  const checkExpr = (expr: string, field: string) => {
+    let ast: AstNode;
+    try {
+      ast = parseExpr(expr);
+    } catch (e) {
+      if (e instanceof ConfigError) errors.push({ code: e.code, message: e.message, loc: { block: block.id, field } });
+      return;
+    }
+    for (const v of collectVarRefs(ast)) {
+      if (!knownVars.has(v)) {
+        errors.push({ code: 'S3_UNDEFINED_VAR', message: `'$${v}' not in scope`, loc: { block: block.id, field } });
+      }
+    }
+    for (const f of collectFuncCalls(ast)) {
+      if (!knownFns.has(f)) {
+        errors.push({ code: 'S7_UNKNOWN_FUNC', message: `unknown function '${f}'`, loc: { block: block.id, field } });
+      }
+    }
+  };
+
+  const checkValueString = (raw: unknown, field: string) => {
+    if (typeof raw === 'string' && raw.length > 0 && (raw[0] === '$' || raw.includes('('))) {
+      checkExpr(raw, field);
+    }
+  };
+
+  if ('expr' in block) checkExpr(block.expr, 'expr');
+  if ('branches' in block) {
+    for (let i = 0; i < block.branches.length; i++) {
+      const [cond, payload] = block.branches[i];
+      checkExpr(cond, `branches[${i}].cond`);
+      if (!Array.isArray(payload)) {
+        for (const v of Object.values(payload)) checkValueString(v, `branches[${i}].set`);
+      }
+    }
+    if (block.else === undefined) errors.push({ code: 'S6_MISSING_ELSE', message: 'missing else', loc: { block: block.id } });
+  }
+  if ('cases' in block) {
+    const onName = block.on.startsWith('$') ? block.on.slice(1) : block.on;
+    if (!isValidIdent(onName)) {
+      errors.push({ code: 'S6_TABLE_INVALID_DIM', message: `'on' must be plain $var`, loc: { block: block.id, field: 'on' } });
+    }
+    if (!knownVars.has(onName)) {
+      errors.push({ code: 'S3_UNDEFINED_VAR', message: `'$${onName}' not in scope`, loc: { block: block.id, field: 'on' } });
+    }
+    for (let i = 0; i < block.cases.length; i++) {
+      const [, payload] = block.cases[i];
+      if (!Array.isArray(payload)) {
+        for (const v of Object.values(payload)) checkValueString(v, `cases[${i}].set`);
+      }
+    }
+    if (block.default === undefined) errors.push({ code: 'S6_MISSING_DEFAULT', message: 'missing default', loc: { block: block.id } });
+  }
+  if ('table' in block) {
+    for (const v of block.table) {
+      const name = v.startsWith('$') ? v.slice(1) : v;
+      if (!isValidIdent(name)) {
+        errors.push({ code: 'S6_TABLE_INVALID_DIM', message: `table dim must be plain $var`, loc: { block: block.id } });
+      }
+      if (!knownVars.has(name)) {
+        errors.push({ code: 'S3_UNDEFINED_VAR', message: `'$${name}' not in scope`, loc: { block: block.id } });
+      }
+    }
+    if (block.rows.length === 0) errors.push({ code: 'S6_TABLE_EMPTY', message: 'no rows', loc: { block: block.id } });
+    for (let i = 0; i < block.rows.length; i++) {
+      if (block.rows[i].length !== block.table.length + 1) {
+        errors.push({
+          code: 'S6_TABLE_ROW_LENGTH',
+          message: `row ${i} cell count mismatch`,
+          loc: { block: block.id },
+        });
+      }
+    }
+    if (block.default === undefined) errors.push({ code: 'S6_MISSING_DEFAULT', message: 'missing default', loc: { block: block.id } });
+  }
+
+  return { valid: errors.length === 0, errors, warnings };
+}
+
 function matchAllCells(patterns: ReturnType<typeof parseCellPattern>[], values: unknown[]): boolean {
   for (let i = 0; i < patterns.length; i++) {
     const p = patterns[i];

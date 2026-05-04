@@ -1,23 +1,36 @@
 import type { FnImpl, Inputs, Manifest, Module, Outputs, PreparedModule, ValidationResult, WarningObj } from './types.js';
 import { ConfigError } from './errors.js';
 import { FunctionRegistry, loadDefaults, type ThemeName } from './functions.js';
-import { debugModule, evalModule, prepareModule, type DebugResult } from './evaluator.js';
+import {
+  debugModule,
+  evalModule,
+  prepareModule,
+  previewExpr,
+  scopeAt,
+  type BlockScope,
+  type DebugResult,
+  type ExprPreview,
+} from './evaluator.js';
 import {
   batchValidateFields,
   checkCoverage,
   fieldSuggestions,
   livePreview,
+  validateBlock,
   validateField,
   validateModule,
   validatePartial,
   validationStatus,
+  type BlockValidation,
   type FieldResult,
   type FormStatus,
   type PartialResult,
   type PreviewResult,
 } from './validator.js';
 import { generateCode, generateDocs, generateSchema, type CodeGenOpts, type SchemaFormat } from './generators.js';
+import { completionAt, tryParseExpr, type Completion, type ParseResult } from './parser.js';
 import { TemplateRegistry, type Template, type TemplateMeta } from './templates.js';
+import type { Block } from './types.js';
 
 export interface BatchResult {
   index: number;
@@ -173,6 +186,37 @@ export class RuleFlow {
 
   batchValidateFields(updates: Record<string, unknown>, current: Inputs, module: Module): Record<string, FieldResult> {
     return batchValidateFields(updates, current, module);
+  }
+
+  scopeAt(module: Module, blockId: string): BlockScope {
+    if (module.uses) {
+      for (const t of module.uses) {
+        if (!this.reg.isThemeLoaded(t)) {
+          try {
+            this.loadTheme(t as ThemeName);
+          } catch {
+            // unknown theme, skip
+          }
+        }
+      }
+    }
+    return scopeAt(module, blockId, this.reg);
+  }
+
+  validateBlock(block: Block, scope: BlockScope): BlockValidation {
+    return validateBlock(block, scope);
+  }
+
+  previewExpr(expr: string, vars: Record<string, unknown>): ExprPreview {
+    return previewExpr(expr, vars, this.reg);
+  }
+
+  tryParseExpr(text: string): ParseResult {
+    return tryParseExpr(text);
+  }
+
+  completionAt(text: string, pos: number, scope: BlockScope): Completion {
+    return completionAt(text, pos, scope);
   }
 
   getTemplates(category?: string): TemplateMeta[] {

@@ -471,3 +471,74 @@ function parseSignedNumber(s: string): number | null {
   const n = Number(trimmed);
   return Number.isFinite(n) ? n : null;
 }
+
+export interface ParseError {
+  code: string;
+  message: string;
+  pos: number;
+}
+
+export interface ParseResult {
+  ast?: AstNode;
+  error?: ParseError;
+}
+
+export function tryParseExpr(text: string): ParseResult {
+  try {
+    return { ast: parseExpr(text) };
+  } catch (e) {
+    if (e instanceof ConfigError) {
+      return { error: { code: e.code, message: e.message, pos: extractColFromMessage(e.message) } };
+    }
+    if (e instanceof TokenizeError) {
+      return { error: { code: 'TOKENIZE', message: e.message, pos: e.pos } };
+    }
+    return { error: { code: 'UNKNOWN', message: e instanceof Error ? e.message : String(e), pos: 0 } };
+  }
+}
+
+function extractColFromMessage(msg: string): number {
+  const idx = msg.indexOf('col ');
+  if (idx < 0) return 0;
+  let i = idx + 4;
+  let n = '';
+  while (i < msg.length && msg[i] >= '0' && msg[i] <= '9') {
+    n += msg[i];
+    i++;
+  }
+  return n.length > 0 ? Number(n) : 0;
+}
+
+export type CompletionKind = 'var' | 'function' | 'literal';
+
+export interface Completion {
+  kind: CompletionKind;
+  prefix: string;
+  suggestions: string[];
+}
+
+export function completionAt(
+  text: string,
+  pos: number,
+  scope: { vars: string[]; functions: string[] },
+): Completion {
+  const upto = text.slice(0, pos);
+  let i = upto.length - 1;
+
+  while (i >= 0 && isAlphaNum(upto[i])) i--;
+  const tokenStart = i + 1;
+  const prefix = upto.slice(tokenStart);
+  const before = i >= 0 ? upto[i] : '';
+
+  if (before === '$') {
+    const matches = scope.vars.filter((v) => v.startsWith(prefix));
+    return { kind: 'var', prefix, suggestions: matches };
+  }
+
+  if (prefix.length > 0 && isAlpha(prefix[0])) {
+    const matches = scope.functions.filter((f) => f.startsWith(prefix));
+    return { kind: 'function', prefix, suggestions: matches };
+  }
+
+  return { kind: 'literal', prefix: '', suggestions: [] };
+}

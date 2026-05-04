@@ -140,6 +140,30 @@ const opts = rf.fieldSuggestions('tier', config);
 // ['gold', 'silver', 'bronze']
 ```
 
+## UI editor helpers
+
+```ts
+// Variables + functions visible at a given block (for autocomplete / scope check)
+const scope = rf.scopeAt(config, 'block_id');
+// { vars: ['price', 'qty', 'subtotal'], functions: ['min', 'max', ...] }
+
+// Validate a single block without running the whole module
+const r = rf.validateBlock(block, scope);
+// { valid, errors, warnings }
+
+// Sandbox eval of an expression with sample vars
+const p = rf.previewExpr('$x * 2 + 1', { x: 5 });
+// { result: 11 } or { error: '...' }
+
+// Non-throwing parse for live editor
+const r = rf.tryParseExpr('$x +');
+// { ast?, error?: { code, message, pos } }
+
+// Autocomplete at cursor position
+const c = rf.completionAt('$pri', 4, scope);
+// { kind: 'var', prefix: 'pri', suggestions: ['price'] }
+```
+
 ## Debug trace
 
 ```ts

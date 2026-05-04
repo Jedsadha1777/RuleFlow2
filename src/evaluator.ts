@@ -729,6 +729,48 @@ function diffVars(before: Record<string, unknown>, after: Record<string, unknown
   return delta;
 }
 
+export interface ExprPreview {
+  result?: unknown;
+  error?: string;
+}
+
+export function previewExpr(expr: string, vars: Record<string, unknown>, reg: FunctionRegistry): ExprPreview {
+  try {
+    const ast = parseExpr(expr);
+    const v = evalExpr(ast, vars, reg);
+    return { result: serialize(v) };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export interface BlockScope {
+  vars: string[];
+  functions: string[];
+}
+
+export function scopeAt(module: Module, blockId: string, reg: FunctionRegistry): BlockScope {
+  const vars = new Set<string>(module.inputs.map((i) => i.name));
+  const order = topoSortPublic(module);
+  for (const b of order) {
+    if (b.id === blockId) break;
+    if ('out' in b) vars.add(b.out[0]);
+    if ('outs' in b) for (const o of b.outs) vars.add(o[0]);
+  }
+  return {
+    vars: Array.from(vars),
+    functions: reg.list().map((f) => f.name),
+  };
+}
+
+function topoSortPublic(module: Module): Block[] {
+  try {
+    return topoSort(module);
+  } catch {
+    return [...module.blocks];
+  }
+}
+
 export function debugModule(prepared: PreparedModule, inputs: Inputs, reg: FunctionRegistry): DebugResult {
   const vars = checkInputs(prepared.module, inputs);
   const trace: DebugTrace = { order: [], intermediate: {}, timing_us: {}, total_us: 0 };
