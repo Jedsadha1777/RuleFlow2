@@ -66,7 +66,7 @@ class IfBlock extends BaseBlock {
           <span class="badge bg-info" style="min-width:60px">${branchIdx === 0 ? 'IF' : 'ELIF'}</span>
           <input type="text"
                  class="form-control form-control-sm expr-input"
-                 data-expr-input data-block-i="${idx}" data-field="branch_cond_${branchIdx}"
+                 data-block-i="${idx}" data-field="branch_cond_${branchIdx}"
                  value="${escapeAttr(branch.cond)}"
                  placeholder="$x > 5 AND $y == 'a'"
                  autocomplete="off">

@@ -343,11 +343,19 @@ $(document).ready(function () {
     const idx = parseInt($el.attr('data-block-i'));
     const field = $el.attr('data-field');
     if (isNaN(idx)) return;
+    if (field.startsWith('branch_cond_')) {
+      // stored nested in branches[], not as a flat data key
+      const branchIdx = parseInt(field.replace('branch_cond_', ''));
+      state.blocks[idx].data.branches[branchIdx].cond = $el.val();
+      refreshJson();
+      refreshValidation();
+      inlineExprError(idx, field, $el.val());
+      return;
+    }
     state.blocks[idx].data[field] = $el.val();
-    if (field === 'id' || field === 'out_name') refreshOutputs();
+    if (field === 'out_name') refreshOutputs();
     refreshJson();
     refreshValidation();
-    if (field === 'id') $(`.block-card[data-block-index="${idx}"] .block-id`).text($el.val());
   });
 
   // Block header collapse
@@ -522,18 +530,6 @@ $(document).ready(function () {
     state.blocks[idx].data.rows[ri].cells[ci] = $el.val();
     refreshJson();
     refreshValidation();
-  });
-
-  // Branch cond (also expression input)
-  $(document).on('input change', '.expr-input[data-field^="branch_cond_"]', function () {
-    const $el = $(this);
-    const idx = parseInt($el.attr('data-block-i'));
-    const field = $el.attr('data-field');
-    const branchIdx = parseInt(field.replace('branch_cond_', ''));
-    state.blocks[idx].data.branches[branchIdx].cond = $el.val();
-    refreshJson();
-    refreshValidation();
-    inlineExprError(idx, field, $el.val());
   });
 
   // Set map field updates
@@ -712,7 +708,7 @@ $(document).ready(function () {
     const sug = item.dataset.completion;
     const prefix = item.dataset.prefix;
     const kind = item.dataset.kind;
-    const inserted = (kind === 'var' ? '' : '') + sug.slice(prefix.length) + (kind === 'function' ? '(' : '');
+    const inserted = sug.slice(prefix.length) + (kind === 'function' ? '(' : '');
     const before = text.slice(0, pos);
     const after = text.slice(pos);
     input.value = before + inserted + after;

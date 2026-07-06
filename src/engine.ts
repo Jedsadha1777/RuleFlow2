@@ -1,4 +1,4 @@
-import type { FnImpl, Inputs, Manifest, Module, Outputs, PreparedModule, ValidationResult, WarningObj } from './types.js';
+import type { Block, FnImpl, Inputs, Manifest, Module, Outputs, PreparedModule, ValidationResult, WarningObj } from './types.js';
 import { ConfigError } from './errors.js';
 import { FunctionRegistry, loadDefaults, type ThemeName } from './functions.js';
 import {
@@ -30,7 +30,6 @@ import {
 import { generateCode, generateDocs, generateSchema, type CodeGenOpts, type SchemaFormat } from './generators.js';
 import { completionAt, tryParseExpr, type Completion, type ParseResult } from './parser.js';
 import { TemplateRegistry, type Template, type TemplateMeta } from './templates.js';
-import type { Block } from './types.js';
 
 export interface BatchResult {
   index: number;
@@ -229,10 +228,6 @@ export class RuleFlow {
 
   searchTemplates(keyword: string): TemplateMeta[] {
     return this.templates.search(keyword);
-  }
-
-  registerTemplate(name: string, template: Template): void {
-    this.templates.register(name, template);
   }
 
   exportTemplate(name: string): string {

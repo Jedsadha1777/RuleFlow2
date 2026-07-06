@@ -1,5 +1,5 @@
 export { RuleFlow } from './engine.js';
-export { ConfigError, InputError, RunError, Warning } from './errors.js';
+export { ConfigError, InputError, RunError } from './errors.js';
 export {
   parseExpr,
   parseCellPattern,

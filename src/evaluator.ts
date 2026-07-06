@@ -78,7 +78,7 @@ function mismatch(name: string, expected: string, got: unknown): InputError {
   return new InputError('R1_TYPE_MISMATCH', name, `expected ${expected}, got ${typeof got}`, { expected, got });
 }
 
-export function coerceOutput(value: unknown, type: PrimType): unknown {
+function coerceOutput(value: unknown, type: PrimType): unknown {
   if (value === null || value === undefined) return null;
 
   if (type === 'num') {
@@ -116,7 +116,7 @@ export function coerceOutput(value: unknown, type: PrimType): unknown {
   return null;
 }
 
-export function serialize(value: unknown): unknown {
+function serialize(value: unknown): unknown {
   if (value instanceof Decimal) return value.toString();
   return value;
 }
@@ -366,7 +366,7 @@ function prepareBlock(block: Block): PreparedBlock {
   };
 }
 
-export function blockKind(b: Block): 'formula' | 'if' | 'switch' | 'table' {
+function blockKind(b: Block): 'formula' | 'if' | 'switch' | 'table' {
   const kinds = [
     'expr' in b ? 'formula' : null,
     'branches' in b ? 'if' : null,
@@ -487,7 +487,7 @@ function outputsOf(b: Block): string[] {
   return [];
 }
 
-export function collectBlockVarRefs(b: Block): Set<string> {
+function collectBlockVarRefs(b: Block): Set<string> {
   const refs = new Set<string>();
   const fromExpr = (s: string) => {
     try {
@@ -528,7 +528,7 @@ export function collectBlockVarRefs(b: Block): Set<string> {
   return refs;
 }
 
-export function checkInputs(module: Module, inputs: Inputs): Record<string, unknown> {
+function checkInputs(module: Module, inputs: Inputs): Record<string, unknown> {
   const ctx: Record<string, unknown> = {};
   for (const decl of module.inputs) {
     const raw = inputs[decl.name];

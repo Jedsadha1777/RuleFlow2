@@ -136,7 +136,6 @@ export interface FnSig {
   args: ArgSpec[];
   return: PrimType;
   variadic?: boolean;
-  desc?: string;
 }
 
 export interface ArgSpec {
@@ -149,17 +148,13 @@ export interface ArgSpec {
 export interface Manifest {
   name: string;
   ver: string;
-  desc?: string;
   funcs: FnSig[];
-  impl?: Record<string, string>;
 }
 
 export interface ConfigErrorObj {
   code: string;
   loc?: { block?: string; field?: string; path?: string };
   message: string;
-  expected?: unknown;
-  got?: unknown;
 }
 
 export interface WarningObj {

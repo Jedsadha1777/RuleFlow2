@@ -6,14 +6,12 @@ class BaseBlock {
 
   kind() { return 'base'; }
   kindLabel() { return 'Block'; }
-  kindIcon() { return 'bi-square'; }
 
   genId() {
     return `${this.kind()}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   }
 
   getId() { return this.data.id; }
-  setId(id) { this.data.id = id; }
 
   outputNames() { return []; }
   exposedOutputNames() { return this.outputNames(); }
@@ -103,7 +101,7 @@ function exprField(label, blockIdx, field, value, placeholder) {
       <label class="form-label small mb-1">${label}</label>
       <input type="text"
              class="form-control form-control-sm expr-input"
-             data-expr-input data-block-i="${blockIdx}" data-field="${field}"
+             data-block-i="${blockIdx}" data-field="${field}"
              value="${escapeAttr(value || '')}"
              placeholder="${placeholder || ''}"
              autocomplete="off">
